@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #discover {background: #bbbccc; padding: 3px; position: fixed; bottom: 40px; width: 100%;}
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+    </style>
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <form action="">
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+    <button id="discover">Discover</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      var socket = io();
+      var R1 = Math.floor(Math.random()*100),
+          R2 = Math.floor(Math.random()*100),
+          b,
+          y,
+          tmpR1,
+          tmpY;
+
+      function hash(x,y,z) {
+        return 11*x*13*y*23*z;
+      }
+      function check(x,y,z) {
+        var R1real = tmpR1 === y,
+            Yreal = hash(x,y,z) === tmpY;
+        $('#messages').append($('<li>').text("R1 is: " + R1real + " \n " + "Y is: " + Yreal));        
+      }
+      $('form').submit(function(){
+        b = + $('#m').val();
+        y = hash(R1, R2, b);
+        socket.emit('commitment', R1, y);
+        // socket.emit('chat message', $('#m').val());
+        $('#m').val('');
+        return false;
+      });
+      $('#discover').click(function(){
+        if (b === undefined) {
+          return false;
+        }
+        socket.emit('discover', b, R1, R2);
+      });
+      socket.on('commitment', function(tR1, ty) {
+        tmpR1 = tR1;
+        tmpY = y;
+        $('#messages').append($('<li>').text("Just recived commitment with values: " + tR1 + " " + ty));
+      });
+      socket.on('discover', function(tB, tR1, tR2) {
+        $('#messages').append($('<li>').text("Discovered values are : " + tB + " " + tR1 + " " + tR2));
+        check(tB, tR1, tR2);
+      });
+    </script>
+  </body>
+</html>
