@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <title>Commitment scheme</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font: 13px Helvetica, Arial; }
@@ -24,42 +24,69 @@
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       var socket = io();
-      var R1 = Math.floor(Math.random()*100),
-          R2 = Math.floor(Math.random()*100),
+      var R1 = randomizeVariable(),
+          R2 = randomizeVariable(),
           b,
           y,
           tmpR1,
           tmpY;
-
-      function hash(x,y,z) {
-        return 11*x*13*y*23*z;
+      function randomizeVariable() {
+         return Math.floor(Math.random()*100);
       }
-      function check(x,y,z) {
-        var R1real = tmpR1 === y,
-            Yreal = hash(x,y,z) === tmpY;
-        $('#messages').append($('<li>').text("R1 is: " + R1real + " \n " + "Y is: " + Yreal));        
+      function hash(a,b,c) {
+        // if (typeof c === "string") {
+          var hashString = 0;
+          for(var i = 0; i < c.length; i++) {
+            char = c.charCodeAt(i);
+            if (hashString === 0) {
+              hashString = char /*% (c.length + 1)*/;
+            } else {
+              hashString = hashString * char;
+            }
+          }
+          hashString = hashString * a * 11 / b * 23;
+          while (hashString > 1000000000) {
+            hashString = Math.floor(hashString / 1000);
+          }
+          return hashString;
+        // } else {
+        //   return 11*a*13*b*23*c;
+        // }
       }
-      $('form').submit(function(){
-        b = + $('#m').val();
+      function check(a,b,c) {
+        var R1real = tmpR1 === b,
+            Yreal = hash(b,c,a) === tmpY;
+        $('#messages').append($('<li>').text("R1 is: " + R1real + " Y is: " + Yreal)); 
+        if (!R1real || !Yreal) {
+          alert('Your opponent is cheating!!!');
+        }       
+      }
+      function commitment(){
+        b = $('#m').val();
         y = hash(R1, R2, b);
         socket.emit('commitment', R1, y);
         // socket.emit('chat message', $('#m').val());
         $('#m').val('');
         return false;
-      });
-      $('#discover').click(function(){
+      }
+      function discover(){
         if (b === undefined) {
           return false;
         }
         socket.emit('discover', b, R1, R2);
-      });
+        R1 = randomizeVariable();
+        R2 = randomizeVariable();
+        b = undefined;
+      }
+      $('form').submit(commitment);
+      $('#discover').click(discover);
       socket.on('commitment', function(tR1, ty) {
         tmpR1 = tR1;
-        tmpY = y;
-        $('#messages').append($('<li>').text("Just recived commitment with values: " + tR1 + " " + ty));
+        tmpY = ty;
+        $('#messages').append($('<li>').text("Just recived commitment with values: R1: " + tR1 +" Y: " + ty));
       });
       socket.on('discover', function(tB, tR1, tR2) {
-        $('#messages').append($('<li>').text("Discovered values are : " + tB + " " + tR1 + " " + tR2));
+        $('#messages').append($('<li>').text("Discovered values are : " + "value: " + tB + " R1: " + tR1 + " R2: " + tR2));
         check(tB, tR1, tR2);
       });
     </script>
